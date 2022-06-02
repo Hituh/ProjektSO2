@@ -1,4 +1,4 @@
-#ifndef fucntions_h
+#ifndef functions_h
 #define functions_h
 
 

@@ -6,30 +6,21 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
 
 int main(int argc, char* argv[])
 {
     
     /*------------------------------------Required inputs check------------------------------------*/
-    if (argc < 3)
-    {
-        //if first argument is -h or -help display manual
+    //if first argument is -h or -help display manual
+    if(argc >= 2)
         if(strcmp(argv[1],"-h") == 0 || strcmp(argv[1], "-help") == 0)
         {
             instruction_manual();
             exit(0);
         }
-
-        printf("Not enough arguments provided\n");
-        printf("Would you like to see the manual page? (y/n)\n");
-        char answer;
-        scanf("%c", &answer); //TODO: maybe use a safer function like sscanf instead of scanf
-        if (answer == 'y' || answer == 'Y')
-        {
-            instruction_manual();
-            exit(0);
-        }
-    }
     int choice;
     int N=10; //Amount of cars
     int type=0; //0 for Mutex/Semaphore, 1 for Condition Variable
