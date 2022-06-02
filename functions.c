@@ -1,10 +1,13 @@
 #include "functions.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 
 
 void instruction_manual()
 {
-  syslog(LOG_NOTICE, "Displaying manual page...");
   char* filename = "manual.txt";
   FILE* fp = fopen(filename, "r");
 
@@ -15,6 +18,6 @@ void instruction_manual()
   }
   char ch;
   while ((ch = fgetc(fp)) != EOF)
-    putchar(ch);
+  putchar(ch);
   fclose(fp);
 }

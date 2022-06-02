@@ -1,5 +1,16 @@
-Projekt: main.c functions.o list.o
-	gcc main.c functions.o list.o -g -pthread -o MainOut
-	rm *.o
+.SILENT:
+output: main.o functions.o 
+	gcc main.o functions.o -o Most
 
-clean: rm 
+main.o: main.c
+	gcc -c main.c
+
+functions.o: functions.c functions.h
+	gcc -c functions.c
+
+clean: 
+	rm -f *.o Most
+
+reload:
+	rm -f *.o Most
+	make

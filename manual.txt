@@ -1,0 +1,4 @@
+1. Parameters:
+    -N (number) - Number of cars passing through bridge. Default = 10
+    -T (0/1) - Type of program. 0 will use only Mutexes and Semaphores, 1 will use Conditional Variables
+2. Examples
