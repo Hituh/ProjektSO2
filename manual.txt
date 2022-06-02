@@ -1,4 +1,11 @@
 1. Parameters:
     -N (number) - Number of cars passing through bridge. Default = 10
-    -T (0/1) - Type of program. 0 will use only Mutexes and Semaphores, 1 will use Conditional Variables
-2. Examples
+    -T - Program will run using Conditional Variables. By default it will run with Mutexes and Semaphores.
+    -D - Debug mode, only for testing purposes
+2. Examples:
+    ./Most              - Runs the program with default settings.
+    ./Most -N 15 -T     - Runs the program with 15 cars and Conditional Variables.
+    ./Most -N 5         - Runs the program with 5 cars and Mutexes.
+    ./Most -D           - Runs the program in debug mode.
+    ./Most -h           - Shows this help.
+    
