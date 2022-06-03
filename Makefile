@@ -13,7 +13,7 @@ lista.o: list.c list.h
 	gcc -c list.c
 
 clean: 
-	rm -f *.o Mosts
+	rm -f *.o Most
 
 reload:
 	rm -f *.o Most
