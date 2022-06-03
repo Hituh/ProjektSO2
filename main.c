@@ -1,4 +1,5 @@
 #include "functions.h"
+#include "list.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -65,8 +66,13 @@ int main(int argc, char* argv[])
     }
     /*Debug test*/
     /*Main Code*/
+    if(type == 0)
+    {
 
-    //if(type == 0)
-    //if(type == 1)
+    }
+    if(type == 1)
+    {
+
+    }
     /*Main Code*/
 }
