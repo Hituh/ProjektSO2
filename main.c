@@ -8,7 +8,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <inttypes.h>
 
 /*Manual*/
 void instruction_manual()
@@ -35,12 +34,12 @@ typedef struct List
     struct List *next;
 } list;
 
-int debugmode = 0;                                    // debug
-int id_on_bridge = 0;                          // nr samochodu na moscie
-int amount_of_cars = 10;                        // liczba krazacych samochodow
+int debugmode = 0;                            // debug
+int id_on_bridge = 0;                         // nr samochodu na moscie
+int amount_of_cars = 10;                      // liczba krazacych samochodow
 int city_A = 0, city_B = 0, m_A = 0, m_B = 0; // liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
-list *queueA = NULL;                       // ktore samochody w kolejce A
-list *queueB = NULL;                       // ktore samochody w kolejce B
+list *queueA = NULL;                          // ktore samochody w kolejce A
+list *queueB = NULL;                          // ktore samochody w kolejce B
 
 list *cityA = NULL; // ktore samochody w miasto A
 list *cityB = NULL; // ktore samochody w miasto B
@@ -48,13 +47,13 @@ list *cityB = NULL; // ktore samochody w miasto B
 list *bridge_queue = NULL; // samochody czekajace przy moscie ze strony A i strony B
 
 pthread_cond_t before_bridge; // samochod jest przed mostem
-pthread_cond_t after_bridge;    // samochod jest za mostem
+pthread_cond_t after_bridge;  // samochod jest za mostem
 
-pthread_mutex_t mutex_most;    // mutex mostu(id_on_bridge)
-pthread_mutex_t queue_a; // mutex kolejki A (m_A)
-pthread_mutex_t queue_b; // mutex kolejki B (m_B)
-pthread_mutex_t city_a;      // mutex miasto A (city_A)
-pthread_mutex_t city_b;      // mutex miasto B (city_B)
+pthread_mutex_t mutex_most; // mutex mostu(id_on_bridge)
+pthread_mutex_t queue_a;    // mutex kolejki A (m_A)
+pthread_mutex_t queue_b;    // mutex kolejki B (m_B)
+pthread_mutex_t city_a;     // mutex miasto A (city_A)
+pthread_mutex_t city_b;     // mutex miasto B (city_B)
 
 pthread_mutex_t mutex_A;   // mutex kolejki_A i miasta_A (city_A,m_A)
 pthread_mutex_t mutex_B;   // mutex kolejki_B i miasta_B (city_B,m_B)
@@ -62,80 +61,66 @@ pthread_mutex_t most_lock; // mutex mostu
 /*Variables*/
 
 /*List*/
-void listadd(list **l, int x)
+//Add items to the list
+void listadd(list **head, int carid)
 {
-    list *nowy = malloc(sizeof(list));
-    nowy->carid = x;
-    nowy->next = NULL;
-    if (*l == NULL)
-    {
-        *l = nowy;
-    }
-    else
-    {
-        list *temp = *l;
-        while (temp->next != NULL)
-        {
-            temp = temp->next;
-        }
+    list *new_node = (list *)malloc(sizeof(list));
+    new_node->carid = carid;
+    new_node->next = NULL;
 
-        temp->next = nowy;
+    if (*head == NULL)
+    {
+        *head = new_node;
         return;
     }
+    list *temp = *head;
+    while (temp->next != NULL)
+        temp = temp->next;
+    temp->next = new_node;
 }
 
-void listremove(list **l, int x)
+//Remove items from the list
+void listremove(list **head, int carid)
 {
-    if (*l == NULL)
+    list *temp = *head;
+    if (temp->carid == carid)
     {
-        return;
-    }
-    if ((*l)->carid == x)
-    {
-        list *temp = (*l);
-        list *temp2 = (*l)->next;
+        *head = temp->next;
         free(temp);
-        *l = temp2;
         return;
     }
-
-    list *przed = *l;
-    list *temp = *l;
-    list *po = *l;
     while (temp->next != NULL)
     {
-        if (temp->carid == x)
-            break;
-        przed = temp;
+        if (temp->next->carid == carid)
+        {
+            list *temp2 = temp->next;
+            temp->next = temp->next->next;
+            free(temp2);
+            return;
+        }
         temp = temp->next;
     }
-    po = temp->next;
-    free(temp);
-    przed->next = po;
 }
 
-void listdelete(list **l)
+//Delete whole list
+void listdelete(list **head)
 {
-    list *temp = *l;
-    list *del = *l;
+    list *temp = *head;
     while (temp != NULL)
     {
-        del = temp;
+        list *temp2 = temp;
         temp = temp->next;
-        free(del);
+        free(temp2);
     }
-
-    *l = NULL;
+    *head = NULL;
 }
 
-int first(list *l)
+//Return first item from the list
+int listfirst(list *head)
 {
-    if (l == NULL)
-    {
-        return 0;
-    }
-    else
-        return l->carid;
+    if (head == NULL)
+        return -1;
+    return head->carid;
 }
 /*List*/
 
@@ -150,44 +135,31 @@ void displaylist(list *l)
     }
     printf("\n");
 }
-void displayqueue()
-{
-    printf("Kolejka A:");
-    displaylist(queueA);
-    printf("Kolejka B:");
-    displaylist(queueB);
 
-    printf("Miasto A:");
-    displaylist(cityA);
-    printf("Miasto B:");
-    displaylist(cityB);
-}
+//Display car on the bridge
 void displaybridge()
 {
-    if (id_on_bridge == 0)
+    if (id_on_bridge == 0) //No car on the bridge
     {
         printf("A-%d %d>>> [       ] <<<%d %d-B\n",
                city_A, m_A, m_B, city_B);
     }
-    else if (id_on_bridge > 0)
+    else if (id_on_bridge > 0) //Car on the bridge going from A to B
     {
         printf("A-%d %d>>> [>> %d >>] <<<%d %d-B\n",
                city_A, m_A, id_on_bridge, m_B, city_B);
     }
-    else
+    else//Car on the bridge going from B to A
     {
         printf("A-%d %d>>> [<< %d <<] <<<%d %d-B\n",
                city_A, m_A, -id_on_bridge, m_B, city_B);
     }
-    if (debugmode == 1)
-    {
-        displayqueue();
-    }
 }
-void wait() // czekaj od 0,5s do 1,5s
+
+//Wait for 0.5 seconds
+void wait()
 {
-    // Sleep for 1 seconds
-    usleep(rand() % (1000000 + 500000) + 500000);
+    usleep(500000);
 }
 /*Displaying + common*/
 
