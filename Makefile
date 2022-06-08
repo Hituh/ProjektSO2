@@ -1,7 +1,4 @@
-.SILENT:
-all:Most
-
-Most:Most.c
+Most:Most
 	gcc -o Most -pthread main.c
 
 main.o: main.c

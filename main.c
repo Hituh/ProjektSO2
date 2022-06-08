@@ -34,7 +34,6 @@ typedef struct List
     struct List *next;
 } list;
 
-int debugmode = 0;                            // debug
 int id_on_bridge = 0;                         // nr samochodu na moscie
 int amount_of_cars = 10;                      // liczba krazacych samochodow
 int city_A = 0, city_B = 0, m_A = 0, m_B = 0; // liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
@@ -116,7 +115,7 @@ void listdelete(list **head)
 }
 
 //Return first item from the list
-int listfirst(list *head)
+int first(list *head)
 {
     if (head == NULL)
         return -1;
@@ -125,16 +124,7 @@ int listfirst(list *head)
 /*List*/
 
 /*Displaying + common*/
-void displaylist(list *l)
-{
-    list *temp = l;
-    while (temp != NULL)
-    {
-        printf("%d ", temp->carid);
-        temp = temp->next;
-    }
-    printf("\n");
-}
+
 
 //Display car on the bridge
 void displaybridge()
@@ -190,11 +180,6 @@ void *CarMutex(void *id)
             city_A--;
             m_A++;
 
-            if (debugmode == 1)
-            {
-                listadd(&queueA, numer);
-                listremove(&cityA, numer);
-            }
             displaybridge();
             pthread_mutex_unlock(&queue_a);
             pthread_mutex_unlock(&city_a);
@@ -205,10 +190,6 @@ void *CarMutex(void *id)
             m_A--;
             id_on_bridge = numer;
 
-            if (debugmode == 1)
-            {
-                listremove(&queueA, numer);
-            }
             displaybridge();
 
             pthread_mutex_unlock(&queue_a);
@@ -220,10 +201,6 @@ void *CarMutex(void *id)
             id_on_bridge = 0;
 
             c = 'B';
-            if (debugmode == 1)
-            {
-                listadd(&cityB, numer);
-            }
             displaybridge();
             pthread_mutex_unlock(&mutex_most);
             pthread_mutex_unlock(&city_b);
@@ -236,11 +213,6 @@ void *CarMutex(void *id)
             city_B--;
             m_B++;
 
-            if (debugmode == 1)
-            {
-                listremove(&cityB, numer);
-                listadd(&queueB, numer);
-            }
             displaybridge();
             pthread_mutex_unlock(&queue_b);
             pthread_mutex_unlock(&city_b);
@@ -251,10 +223,6 @@ void *CarMutex(void *id)
             m_B--;
             id_on_bridge = -numer;
 
-            if (debugmode == 1)
-            {
-                listremove(&queueB, numer);
-            }
             displaybridge();
 
             pthread_mutex_unlock(&queue_b);
@@ -266,10 +234,6 @@ void *CarMutex(void *id)
             id_on_bridge = 0;
 
             c = 'A';
-            if (debugmode == 1)
-            {
-                listadd(&cityA, numer);
-            }
             displaybridge();
             pthread_mutex_unlock(&mutex_most);
             pthread_mutex_unlock(&city_a);
@@ -296,11 +260,6 @@ void *most()
             listremove(&bridge_queue, numer);
             m_A--;
             id_on_bridge = numer;
-
-            if (debugmode == 1)
-            {
-                listremove(&queueA, numer);
-            }
             displaybridge();
 
             wait();
@@ -315,11 +274,6 @@ void *most()
             listremove(&bridge_queue, numer);
             m_B--;
             id_on_bridge = numer;
-
-            if (debugmode == 1)
-            {
-                listremove(&queueB, numer);
-            }
             displaybridge();
 
             wait();
@@ -357,11 +311,6 @@ void *CarVar(void *id)
             city_A--;
             m_A++;
 
-            if (debugmode == 1)
-            {
-                listadd(&queueA, numer);
-                listremove(&cityA, numer);
-            }
             displaybridge();
             listadd(&bridge_queue, numer);
             pthread_mutex_unlock(&mutex_A);
@@ -375,10 +324,6 @@ void *CarVar(void *id)
             pthread_cond_wait(&after_bridge, &mutex_B);
             // samochod jest w miescie B
             city_B++;
-            if (debugmode == 1)
-            {
-                listadd(&cityB, numer);
-            }
             displaybridge();
             c = 'B';
             pthread_mutex_unlock(&mutex_B);
@@ -392,11 +337,6 @@ void *CarVar(void *id)
             city_B--;
             m_B++;
 
-            if (debugmode == 1)
-            {
-                listadd(&queueB, numer);
-                listremove(&cityB, numer);
-            }
             displaybridge();
             listadd(&bridge_queue, -numer);
             pthread_mutex_unlock(&mutex_A);
@@ -410,10 +350,6 @@ void *CarVar(void *id)
             pthread_cond_wait(&after_bridge, &mutex_A);
             // samochod jest w miescie B
             city_A++;
-            if (debugmode == 1)
-            {
-                listadd(&cityA, numer);
-            }
             displaybridge();
             c = 'A';
             pthread_mutex_unlock(&mutex_A);
@@ -434,7 +370,7 @@ int main(int argc, char *argv[])
         }
     int type = 0; // 0 for Mutex/Semaphore, 1 for Conditional Variables
     int choice;
-    while ((choice = getopt(argc, argv, "N:T:Dh:")) != -1)
+    while ((choice = getopt(argc, argv, "N:T:")) != -1)
     {
         switch (choice)
         {
@@ -456,24 +392,12 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             break;
-        case 'D':
-            debugmode = 1;
-            break;
         default:
             printf("Wrong arguments\n");
             exit(1);
         }
     }
     /*Required inputs check/
-    /*Debug test*/
-    if (debugmode == 1)
-    {
-        printf("Debug mode enabled\n");
-        printf("N: %d\n", amount_of_cars);
-        printf("type: %d\n", type);
-        exit(0);
-    }
-    /*Debug test*/
 
     /*Main Code*/
     if (type == 0) // Mutex
@@ -489,20 +413,6 @@ int main(int argc, char *argv[])
         city_A = amount_of_cars / 2 + (amount_of_cars % 2);
         city_B = amount_of_cars / 2;
 
-        if (debugmode == 1)
-        {
-            for (i = 0; i < amount_of_cars; ++i)
-            {
-                if ((i % 2) == 0)
-                {
-                    listadd(&cityA, i + 1);
-                }
-                else
-                {
-                    listadd(&cityB, i + 1);
-                }
-            }
-        }
         displaybridge();
         for (i = 0; i < amount_of_cars; ++i)
         {
@@ -549,20 +459,6 @@ int main(int argc, char *argv[])
         city_A = amount_of_cars / 2 + (amount_of_cars % 2);
         city_B = amount_of_cars / 2;
 
-        if (debugmode == 1)
-        {
-            for (i = 0; i < amount_of_cars; ++i)
-            {
-                if ((i % 2) == 0)
-                {
-                    listadd(&cityA, i + 1);
-                }
-                else
-                {
-                    listadd(&cityB, i + 1);
-                }
-            }
-        }
         displaybridge();
         for (i = 0; i < amount_of_cars; ++i)
         {
