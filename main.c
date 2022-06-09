@@ -36,26 +36,27 @@ typedef struct List
 
 int id_on_bridge = 0;                         // nr samochodu na moscie
 int amount_of_cars = 10;                      // liczba krazacych samochodow
-int city_A = 0, city_B = 0, m_A = 0, m_B = 0; // liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
-list *queueA = NULL;                          // ktore samochody w kolejce A
-list *queueB = NULL;                          // ktore samochody w kolejce B
+int amountcityA = 0, amountcityB = 0, amountqueueA = 0, amountqueueB = 0; // liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
+list *listqueueA = NULL;                          // ktore samochody w kolejce A
+list *listqueueB = NULL;                          // ktore samochody w kolejce B
 
-list *cityA = NULL; // ktore samochody w miasto A
-list *cityB = NULL; // ktore samochody w miasto B
+list *listcityA = NULL; // ktore samochody w miasto A
+list *listcityB = NULL; // ktore samochody w miasto B
 
-list *bridge_queue = NULL; // samochody czekajace przy moscie ze strony A i strony B
+list *listbridgequeue = NULL; // samochody czekajace przy moscie ze strony A i strony B
 
-pthread_cond_t before_bridge; // samochod jest przed mostem
-pthread_cond_t after_bridge;  // samochod jest za mostem
-
+/*Mutexes*/
 pthread_mutex_t mutex_most; // mutex mostu(id_on_bridge)
 pthread_mutex_t queue_a;    // mutex kolejki A (m_A)
 pthread_mutex_t queue_b;    // mutex kolejki B (m_B)
 pthread_mutex_t city_a;     // mutex miasto A (city_A)
 pthread_mutex_t city_b;     // mutex miasto B (city_B)
 
-pthread_mutex_t mutex_A;   // mutex kolejki_A i miasta_A (city_A,m_A)
-pthread_mutex_t mutex_B;   // mutex kolejki_B i miasta_B (city_B,m_B)
+/*Conditional Variables*/
+pthread_cond_t before_bridge; // samochod jest przed mostem
+pthread_cond_t after_bridge;  // samochod jest za mostem
+pthread_mutex_t mutex_A;   // mutex kolejki_A i miasta_A 
+pthread_mutex_t mutex_B;   // mutex kolejki_B i miasta_B 
 pthread_mutex_t most_lock; // mutex mostu
 /*Variables*/
 
@@ -132,24 +133,24 @@ void displaybridge()
     if (id_on_bridge == 0) //No car on the bridge
     {
         printf("A-%d %d>>> [       ] <<<%d %d-B\n",
-               city_A, m_A, m_B, city_B);
+               amountcityA, amountqueueA, amountqueueB, amountcityB);
     }
     else if (id_on_bridge > 0) //Car on the bridge going from A to B
     {
         printf("A-%d %d>>> [>> %d >>] <<<%d %d-B\n",
-               city_A, m_A, id_on_bridge, m_B, city_B);
+               amountcityA, amountqueueA, id_on_bridge, amountqueueB, amountcityB);
     }
     else//Car on the bridge going from B to A
     {
         printf("A-%d %d>>> [<< %d <<] <<<%d %d-B\n",
-               city_A, m_A, -id_on_bridge, m_B, city_B);
+               amountcityA, amountqueueA, -id_on_bridge, amountqueueB, amountcityB);
     }
 }
 
-//Wait for 0.5 seconds
+//Wait for 1 second
 void wait()
 {
-    usleep(500000);
+    usleep(1000000);
 }
 /*Displaying + common*/
 
@@ -167,18 +168,16 @@ void *CarMutex(void *id)
         c = 'B';
         numer = (-numer);
     }
-
-    while (1)
-    {
         wait();
         if (c == 'A')
         // samochod przemieszcza sie z miasta A do kolejki A
         {
+            //Move a car from city A to queue A
             pthread_mutex_lock(&city_a);
             pthread_mutex_lock(&queue_a);
 
-            city_A--;
-            m_A++;
+            amountcityA--;
+            amountqueueA++;
 
             displaybridge();
             pthread_mutex_unlock(&queue_a);
@@ -187,7 +186,7 @@ void *CarMutex(void *id)
             pthread_mutex_lock(&mutex_most);
             pthread_mutex_lock(&queue_a);
 
-            m_A--;
+            amountqueueA--;
             id_on_bridge = numer;
 
             displaybridge();
@@ -197,7 +196,7 @@ void *CarMutex(void *id)
             wait();
             // samochod przemieszcza sie z  mostu do miasta B
             pthread_mutex_lock(&city_b);
-            city_B++;
+            amountcityB++;
             id_on_bridge = 0;
 
             c = 'B';
@@ -210,8 +209,8 @@ void *CarMutex(void *id)
             pthread_mutex_lock(&city_b);
             pthread_mutex_lock(&queue_b);
 
-            city_B--;
-            m_B++;
+            amountcityB--;
+            amountqueueB++;
 
             displaybridge();
             pthread_mutex_unlock(&queue_b);
@@ -220,7 +219,7 @@ void *CarMutex(void *id)
             pthread_mutex_lock(&mutex_most);
             pthread_mutex_lock(&queue_b);
 
-            m_B--;
+            amountqueueB--;
             id_on_bridge = -numer;
 
             displaybridge();
@@ -230,7 +229,7 @@ void *CarMutex(void *id)
             wait();
             // samochod przemieszcza sie z  mostu do miasta A
             pthread_mutex_lock(&city_a);
-            city_A++;
+            amountcityA++;
             id_on_bridge = 0;
 
             c = 'A';
@@ -238,7 +237,7 @@ void *CarMutex(void *id)
             pthread_mutex_unlock(&mutex_most);
             pthread_mutex_unlock(&city_a);
         }
-    }
+    
 }
 /*Mutex*/
 
@@ -251,14 +250,14 @@ void *most()
         pthread_mutex_lock(&most_lock);
         // oczekiwanie na samochod przed mostem
         pthread_cond_wait(&before_bridge, &most_lock);
-        numer = first(bridge_queue);
+        numer = first(listbridgequeue);
 
         if (numer > 0)
         {
             pthread_mutex_lock(&mutex_A);
             pthread_mutex_lock(&mutex_B);
-            listremove(&bridge_queue, numer);
-            m_A--;
+            listremove(&listbridgequeue, numer);
+            amountqueueA--;
             id_on_bridge = numer;
             displaybridge();
 
@@ -271,8 +270,8 @@ void *most()
         {
             pthread_mutex_lock(&mutex_A);
             pthread_mutex_lock(&mutex_B);
-            listremove(&bridge_queue, numer);
-            m_B--;
+            listremove(&listbridgequeue, numer);
+            amountqueueB--;
             id_on_bridge = numer;
             displaybridge();
 
@@ -308,11 +307,11 @@ void *CarVar(void *id)
             pthread_mutex_lock(&mutex_A);
             pthread_mutex_lock(&mutex_B);
 
-            city_A--;
-            m_A++;
+            amountcityA--;
+            amountqueueA++;
 
             displaybridge();
-            listadd(&bridge_queue, numer);
+            listadd(&listbridgequeue, numer);
             pthread_mutex_unlock(&mutex_A);
             pthread_mutex_unlock(&mutex_B);
             // wyslanie sygnalu do mostu
@@ -323,7 +322,7 @@ void *CarVar(void *id)
             // oczekiwanie na zejscie z mostu
             pthread_cond_wait(&after_bridge, &mutex_B);
             // samochod jest w miescie B
-            city_B++;
+            amountcityB++;
             displaybridge();
             c = 'B';
             pthread_mutex_unlock(&mutex_B);
@@ -334,11 +333,11 @@ void *CarVar(void *id)
             pthread_mutex_lock(&mutex_A);
             pthread_mutex_lock(&mutex_B);
 
-            city_B--;
-            m_B++;
+            amountcityB--;
+            amountqueueB++;
 
             displaybridge();
-            listadd(&bridge_queue, -numer);
+            listadd(&listbridgequeue, -numer);
             pthread_mutex_unlock(&mutex_A);
             pthread_mutex_unlock(&mutex_B);
             // wyslanie sygnalu do mostu
@@ -349,7 +348,7 @@ void *CarVar(void *id)
             // oczekiwanie na zejscie z mostu
             pthread_cond_wait(&after_bridge, &mutex_A);
             // samochod jest w miescie B
-            city_A++;
+            amountcityA++;
             displaybridge();
             c = 'A';
             pthread_mutex_unlock(&mutex_A);
@@ -410,8 +409,8 @@ int main(int argc, char *argv[])
 
         pthread_t *samochod_watki = malloc(sizeof(pthread_t) * amount_of_cars);
         int i = 0;
-        city_A = amount_of_cars / 2 + (amount_of_cars % 2);
-        city_B = amount_of_cars / 2;
+        amountcityA = amount_of_cars / 2 + (amount_of_cars % 2);
+        amountcityB = amount_of_cars / 2;
 
         displaybridge();
         for (i = 0; i < amount_of_cars; ++i)
@@ -437,10 +436,10 @@ int main(int argc, char *argv[])
         pthread_mutex_destroy(&city_b);
         pthread_mutex_destroy(&mutex_most);
 
-        listdelete(&queueA);
-        listdelete(&queueB);
-        listdelete(&cityA);
-        listdelete(&cityB);
+        listdelete(&listqueueA);
+        listdelete(&listqueueB);
+        listdelete(&listcityA);
+        listdelete(&listcityB);
 
         return 0;
     }
@@ -456,8 +455,8 @@ int main(int argc, char *argv[])
         pthread_t most_watek;
         pthread_create(&most_watek, NULL, most, NULL);
         int i = 0;
-        city_A = amount_of_cars / 2 + (amount_of_cars % 2);
-        city_B = amount_of_cars / 2;
+        amountcityA = amount_of_cars / 2 + (amount_of_cars % 2);
+        amountcityB = amount_of_cars / 2;
 
         displaybridge();
         for (i = 0; i < amount_of_cars; ++i)
@@ -484,11 +483,11 @@ int main(int argc, char *argv[])
         pthread_cond_destroy(&before_bridge);
         pthread_cond_destroy(&after_bridge);
 
-        listdelete(&queueA);
-        listdelete(&queueB);
-        listdelete(&cityA);
-        listdelete(&cityB);
-        listdelete(&bridge_queue);
+        listdelete(&listqueueA);
+        listdelete(&listqueueB);
+        listdelete(&listcityA);
+        listdelete(&listcityB);
+        listdelete(&listbridgequeue);
         return 0;
     }
     /*Main Code*/
